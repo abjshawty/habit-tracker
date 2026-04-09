@@ -68,6 +68,18 @@ Manual and automated tests for the Habit Tracker backend and frontend.
 
 ---
 
+## 6. Schema Auto-Apply
+
+| # | Test | Expected |
+|---|------|----------|
+| 6.1 | Start server against a fresh empty DB | Tables and seed habits created automatically; `schema applied` logged |
+| 6.2 | Start server against a DB that already has the schema | No errors — all statements are idempotent (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`) |
+| 6.3 | Start server against a DB that already has the schema and existing logs | Existing data untouched; server starts normally |
+| 6.4 | Start server with a valid `DATABASE_URL` but a DB the user has no CREATE permission on | Server exits with a clear fatal log from schema apply step |
+| 6.5 | `GET /api/habits` immediately after first startup | Returns the 3 seeded habits (Meditation, Exercise, Reading) without any manual SQL |
+
+---
+
 ## 6. Frontend — Startup & Config
 
 | # | Test | Expected |
