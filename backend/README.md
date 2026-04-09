@@ -97,15 +97,7 @@ docker run --rm \
   postgres
 ```
 
-### 2. Apply the schema (run once)
-
-```bash
-docker exec -i <container_id> psql -U postgres habitdb < db/init.sql
-```
-
-Or connect with any Postgres client and paste `db/init.sql` manually.
-
-### 3. Configure environment
+### 2. Configure environment
 
 Copy `.env` and adjust if needed:
 
@@ -114,13 +106,15 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/habitdb
 PORT=8080
 ```
 
-### 4. Run the server
+### 3. Run the server
 
 ```bash
 go run main.go
 ```
 
 Server starts on `http://localhost:8080`.
+
+The schema (`db/init.sql`) is embedded in the binary and applied automatically on every startup — no manual SQL step required. All `CREATE TABLE` and `INSERT` statements are idempotent, so re-running the server against an existing database is safe.
 
 ---
 
