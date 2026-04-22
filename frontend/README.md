@@ -1,15 +1,15 @@
 # Habit Tracker — Frontend
 
-React Native app built with Expo. Runs on iOS, Android, and web from a single codebase.
+React Native mobile app built with Expo. Features an innovative circular ring interface for tracking daily habits.
 
 ---
 
 ## Stack
 
-- **Expo ~51** — toolchain and build system
-- **React Native 0.74** — core UI components
-- **React Native Web** — renders the same components in a browser
-- **Expo Status Bar** — cross-platform status bar management
+- **Expo 54** — toolchain and build system
+- **React Native 0.81** — core UI components
+- **react-native-svg** — vector graphics for ring visualization
+- **@expo-google-fonts** — Caveat, Kalam, JetBrains Mono
 
 ---
 
@@ -17,13 +17,41 @@ React Native app built with Expo. Runs on iOS, Android, and web from a single co
 
 ```
 frontend/
-├── index.js          # Expo entry point — registers root component
-├── App.js            # Entire UI: habit list, progress, toggle button
-├── app.json          # Expo config (name, slug, platforms)
-├── babel.config.js   # babel-preset-expo
+├── App.js            # Root component + state management
+├── index.js         # Expo entry point
+├── app.json        # Expo config
+├── babel.config.js
 ├── package.json
-└── .env              # EXPO_PUBLIC_API_URL (not committed)
+├── .env            # EXPO_PUBLIC_API_URL (not committed)
+└── src/
+    ├── RingScreen.js       # Main habit ring view
+    ├── AddHabitScreen.js # Add new habits
+    ├── HistoryScreen.js  # 4-week calendar view
+    └── sketch.js         # Hand-drawn SVG components
 ```
+
+---
+
+## Screens
+
+### RingScreen (Main)
+
+- Circular arrangement of up to 8 habits
+- Tap any node to toggle today's completion
+- Shows progress arc and 7-day sparklines per habit
+- Footer button to add habits or view history
+
+### AddHabitScreen
+
+- Mini ring preview showing habit positions
+- Text input or starter habit pills
+- 8-habit maximum limit
+
+### HistoryScreen
+
+- Week-by-week calendar grid (4 weeks)
+- Navigation arrows to browse past weeks
+- Checkmarks for completed days
 
 ---
 
@@ -33,16 +61,14 @@ The app reads the backend URL from an environment variable:
 
 ```
 # .env
-EXPO_PUBLIC_API_URL=http://localhost:8080
+EXPO_PUBLIC_API_URL=http://192.168.1.9:8082
 ```
 
-| Scenario | Value to set |
-|----------|-------------|
-| Web (browser on same machine) | `http://localhost:8080` |
-| Android emulator | `http://10.0.2.2:8080` |
-| Physical device (iOS or Android) | `http://<your-machine-local-ip>:8080` |
-
-Expo exposes any variable prefixed with `EXPO_PUBLIC_` to the app bundle automatically — no extra config needed.
+| Scenario | Value |
+|----------|-------|
+| Web (browser on same machine) | `http://localhost:8082` |
+| Android emulator | `http://10.0.2.2:8082` |
+| Physical device | `http://<your-machine-local-ip>:8082` |
 
 ---
 
@@ -69,42 +95,58 @@ Opens at `http://localhost:19006`.
 npm run android
 ```
 
-Requires Android Studio with an emulator running.
-
 ### iOS simulator (Mac only)
 
 ```bash
 npm run ios
 ```
 
-Requires Xcode.
-
 ### Physical device
-
-Install the **Expo Go** app on your phone, then:
 
 ```bash
 npm start
 ```
 
-Scan the QR code shown in the terminal.
-
-> Make sure your phone and dev machine are on the same Wi-Fi network, and set `EXPO_PUBLIC_API_URL` to your machine's local IP.
+Scan the QR code shown in the terminal. Ensure your phone and dev machine are on the same Wi-Fi.
 
 ---
 
-## UI Overview
+## Design
 
-The app displays a list of all habits returned by `GET /api/habits`. For each habit:
+### Colors
 
-- **Name** — habit label
-- **Progress** — `done/total this week` (based on the last 7 days)
-- **Toggle button** — taps `POST /api/toggles` to mark today as done or undo it; the list refreshes immediately after
+- **INK** (#1a1814) — Primary text
+- **PAPER** (#f5f3ef) — Background
+- **ACCENT** (#3d8c7c) — Completed/active states
+- **MUTED** — Secondary text
+- **FAINT** — Guidelines
 
-There are no navigation screens, no settings, and no local state beyond what the API returns.
+### Typography
+
+- **Caveat 700 Bold** — Headers, habit names
+- **Kalam 400 Regular** — Body text, buttons
+- **JetBrains Mono 400** — Labels, dates
+
+### Hand-drawn SVG
+
+All graphics use procedural SVG with seeded random for consistent hand-drawn aesthetic:
+
+- `SketchCircle` — Imperfect circles
+- `SketchHatch` — Cross-hatch fill
+- `SketchCheck` — Hand-drawn checkmark
 
 ---
 
-## Connecting to the Backend
+## Connecting to Backend
 
-The backend must be running before the app will display data. See `backend/README.md` for setup instructions. The app does not cache data — every screen load and every toggle hits the API live.
+The backend must be running before the app displays data. See `backend/README.md` for setup.
+
+```bash
+# Start backend first
+cd ../backend
+go run main.go
+
+# Then start frontend
+cd frontend
+npm run web  # or: npm start for device
+```

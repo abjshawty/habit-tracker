@@ -1,13 +1,13 @@
 # Habit Tracker — Backend
 
-Go HTTP server backed by PostgreSQL. Exposes two endpoints for reading habit progress and toggling daily completions.
+Go HTTP server backed by PostgreSQL. Provides REST API for habit management and completion tracking.
 
 ---
 
 ## Stack
 
-- **Go 1.22+** — `net/http` standard library (no framework)
-- **PostgreSQL 13+** — two tables: `habits`, `logs`
+- **Go 1.26** — `net/http` standard library
+- **PostgreSQL** — two tables: `habits`, `logs`
 - **pgx v5** — connection pooling
 - **godotenv** — loads `.env` for local development
 
@@ -17,57 +17,85 @@ Go HTTP server backed by PostgreSQL. Exposes two endpoints for reading habit pro
 
 ```
 backend/
-├── main.go        # HTTP server + request handlers
-├── .env           # Local environment variables (not committed)
+├── main.go        # HTTP handlers + embedded OpenAPI spec
+├── .env           # Environment variables (not committed)
 ├── go.mod
 ├── go.sum
 └── db/
-    ├── client.go  # pgxpool initialization
-    └── init.sql   # Schema creation + seed data
+    ├── client.go  # pgxpool initialization + auto-create database
+    └── init.sql  # Schema + seed data
 ```
 
 ---
 
-## API
+## API Endpoints
 
-### `GET /api/habits`
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/habits` | List habits with 7-day completion counts + today_done |
+| POST | `/api/habits` | Create a new habit |
+| POST | `/api/toggles` | Toggle today's completion for a habit |
+| GET | `/api/history` | Get 28-day completion log per habit |
+| GET | `/docs/openapi.json` | OpenAPI 3.0 spec (JSON) |
+| GET | `/docs/` | Swagger UI |
 
-Returns all habits with completion counts for the past 7 days.
+### GET /api/habits
+
+Returns all habits with completion counts for the past 7 days and today's status.
 
 **Response**
 ```json
 [
-  { "id": 1, "name": "Meditation", "done": 3, "total": 7 },
-  { "id": 2, "name": "Exercise",   "done": 1, "total": 7 },
-  { "id": 3, "name": "Reading",    "done": 5, "total": 7 }
+  { "id": 1, "name": "Meditation", "done": 3, "total": 7, "today_done": true },
+  { "id": 2, "name": "Exercise",   "done": 1, "total": 7, "today_done": false },
+  { "id": 3, "name": "Reading",    "done": 5, "total": 7, "today_done": true }
 ]
 ```
 
-| Field   | Type   | Description                              |
-|---------|--------|------------------------------------------|
-| `id`    | int    | Habit ID                                 |
-| `name`  | string | Habit name                               |
-| `done`  | int    | Days marked complete in the last 7 days  |
-| `total` | int    | Total log entries in the last 7 days     |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | int | Habit ID |
+| `name` | string | Habit name |
+| `done` | int | Days completed in the last 7 days |
+| `total` | int | Total days in the last 7 days |
+| `today_done` | bool | Whether completed today |
 
----
+### POST /api/habits
 
-### `POST /api/toggles`
+Create a new habit.
 
-Upserts a log entry for today. Sending `completed: false` undoes a toggle.
+**Request**
+```json
+{ "name": "Walk" }
+```
 
-**Request body**
+**Response** — `201 Created`
+```json
+{ "id": 4 }
+```
+
+### POST /api/toggles
+
+Toggle today's completion. Uses UPSERT — calling again flips the state.
+
+**Request**
 ```json
 { "habit_id": 1, "completed": true }
 ```
 
-**Response** — `204 No Content` on success.
+**Response** — `204 No Content`
 
-### `GET /swagger/`
+### GET /api/history
 
-Serves Swagger UI for the backend API.
+Returns 28-day completion log per habit.
 
-The UI loads the local OpenAPI document from `GET /swagger/openapi.json`.
+**Response**
+```json
+[
+  { "id": 1, "name": "Meditation", "log": { "2026-04-20": true, "2026-04-21": false } },
+  { "id": 2, "name": "Exercise",   "log": { "2026-04-20": true } }
+]
+```
 
 ---
 
@@ -81,13 +109,13 @@ CREATE TABLE habits (
 
 CREATE TABLE logs (
     habit_id  INT  REFERENCES habits(id) ON DELETE CASCADE,
-    date      DATE NOT NULL DEFAULT CURRENT_DATE,
+    date     DATE NOT NULL DEFAULT CURRENT_DATE,
     completed BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (habit_id, date)
 );
 ```
 
-The `PRIMARY KEY (habit_id, date)` constraint ensures one log entry per habit per day, making toggles safe to call multiple times.
+Default seeds: Meditation, Exercise, Reading
 
 ---
 
@@ -98,18 +126,15 @@ The `PRIMARY KEY (habit_id, date)` constraint ensures one log entry per habit pe
 ```bash
 docker run --rm \
   -p 5432:5432 \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=habitdb \
+  -e POSTGRES_PASSWORD=password \
   postgres
 ```
 
 ### 2. Configure environment
 
-Copy `.env` and adjust if needed:
-
 ```
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/habitdb
-PORT=8080
+DATABASE_URL=postgresql://postgres:password@localhost:5432/habits
+PORT=8082
 ```
 
 ### 3. Run the server
@@ -118,26 +143,29 @@ PORT=8080
 go run main.go
 ```
 
-Server starts on `http://localhost:8080`.
-
-The schema (`db/init.sql`) is embedded in the binary and applied automatically on every startup — no manual SQL step required. All `CREATE TABLE` and `INSERT` statements are idempotent, so re-running the server against an existing database is safe.
+Server starts on `http://localhost:8082`. The schema is embedded and applied automatically on startup.
 
 ---
 
-## Quick Smoke Test
+## Testing
 
 ```bash
 # List habits
-curl http://localhost:8080/api/habits
+curl http://localhost:8082/api/habits
 
-# Mark habit 1 as done today
-curl -X POST http://localhost:8080/api/toggles \
+# Create a habit
+curl -X POST http://localhost:8082/api/habits \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Floss"}'
+
+# Toggle today's completion
+curl -X POST http://localhost:8082/api/toggles \
   -H "Content-Type: application/json" \
   -d '{"habit_id": 1, "completed": true}'
 
-# Confirm the count updated
-curl http://localhost:8080/api/habits
+# Get history
+curl http://localhost:8082/api/history
 
 # Open Swagger UI
-# http://localhost:8080/swagger/
+# http://localhost:8082/docs/
 ```
