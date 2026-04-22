@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tracker - Project Analysis</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1814;
+      color: #f5f3ef;
+      overflow: hidden;
+    }
+    .slideshow {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    .slide {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      padding: 60px 80px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+      opacity: 1;
+    }
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 300;
+      margin-bottom: 20px;
+      color: #3d8c7c;
+    }
+    h2 {
+      font-size: 2rem;
+      font-weight: 400;
+      margin-bottom: 30px;
+      color: #3d8c7c;
+      border-bottom: 1px solid rgba(61,140,124,0.3);
+      padding-bottom: 15px;
+    }
+    h3 {
+      font-size: 1.3rem;
+      color: rgba(245,243,239,0.7);
+      margin-bottom: 15px;
+    }
+    p, li {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: rgba(245,243,239,0.85);
+    }
+    ul {
+      margin-left: 25px;
+    }
+    li { margin-bottom: 10px; }
+    .content-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 40px;
+      flex: 1;
+    }
+    .content-grid.three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .card {
+      background: rgba(245,243,239,0.05);
+      border: 1px solid rgba(61,140,124,0.2);
+      border-radius: 8px;
+      padding: 25px;
+    }
+    .card h3 {
+      color: #3d8c7c;
+      font-weight: 500;
+    }
+    .code-block {
+      background: rgba(0,0,0,0.4);
+      border-radius: 6px;
+      padding: 15px 20px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.9rem;
+      color: #e8d5b7;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .tag {
+      display: inline-block;
+      background: #3d8c7c;
+      color: #1a1814;
+      padding: 4px 12px;
+      border-radius: 3px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .tag.secondary {
+      background: rgba(61,140,124,0.2);
+      color: #3d8c7c;
+    }
+    .nav {
+      position: fixed;
+      bottom: 30px;
+      right: 40px;
+      display: flex;
+      gap: 10px;
+      z-index: 100;
+    }
+    .nav button {
+      background: rgba(61,140,124,0.2);
+      border: none;
+      color: #3d8c7c;
+      padding: 12px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .nav button:hover {
+      background: #3d8c7c;
+      color: #1a1814;
+    }
+    .nav button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .slide-num {
+      position: fixed;
+      bottom: 35px;
+      left: 40px;
+      color: rgba(245,243,239,0.4);
+      font-size: 0.9rem;
+    }
+    .full-card {
+      grid-column: span 2;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 15px;
+      border-bottom: 1px solid rgba(61,140,124,0.2);
+    }
+    th {
+      color: #3d8c7c;
+      font-weight: 500;
+    }
+    td { font-size: 0.95rem; }
+    .method { color: #7cb8a0; }
+    .path { color: #e8d5b7; }
+    .desc { color: rgba(245,243,239,0.6); font-size: 0.9rem; }
+    .diagram {
+      background: rgba(245,243,239,0.03);
+      border: 1px solid rgba(61,140,124,0.15);
+      border-radius: 10px;
+      padding: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .box {
+      background: rgba(61,140,124,0.15);
+      border: 1px solid #3d8c7c;
+      border-radius: 8px;
+      padding: 20px 30px;
+      text-align: center;
+    }
+    .box span {
+      color: #3d8c7c;
+      font-weight: 500;
+    }
+    .arrow { color: #3d8c7c; font-size: 1.5rem; }
+    .color-swatch {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .stat {
+      text-align: center;
+      padding: 20px;
+    }
+    .stat-num {
+      font-size: 3rem;
+      color: #3d8c7c;
+      font-weight: 300;
+    }
+    .stat-label {
+      color: rgba(245,243,239,0.5);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="slideshow">
+    <!-- Slide 1: Overview -->
+    <div class="slide active">
+      <h1>Habit Tracker</h1>
+      <h3>A full-stack habit tracking mobile app with circular visualization</h3>
+      <br>
+      <div class="content-grid" style="margin-top: 40px;">
+        <div class="card">
+          <h3>Project Type</h3>
+          <p>Cross-platform mobile app (iOS, Android, Web)</p>
+          <p style="margin-top:10px;color:#7cb8a0;">React Native + Express (Go backend)</p>
+        </div>
+        <div class="card">
+          <h3>Core Functionality</h3>
+          <p>Track daily habits with visual ring interface</p>
+          <ul style="margin-top:10px">
+            <li>Toggle habit completion</li>
+            <li>View 7-day history sparklines</li>
+            <li>Add new habits (max 8)</li>
+            <li>4-week history calendar</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Tech Stack</h3>
+          <p><span class="tag">Frontend</span> React Native (Expo)</p>
+          <p><span class="tag">Backend</span> Go + PostgreSQL</p>
+          <p><span class="tag">Graphics</span> react-native-svg</p>
+        </div>
+        <div class="card">
+          <h3>Repository</h3>
+          <p>/home/shawty/Projects/personal/habit-tracker</p>
+          <p style="margin-top:10px;color:rgba(245,243,239,0.5);">monorepo with frontend/ & backend/</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 2: Architecture -->
+    <div class="slide">
+      <h2>Architecture</h2>
+      <div class="diagram" style="margin: 30px 0;">
+        <div class="box"><span>Mobile App<br><small>Expo/React Native</small></span></div>
+        <div class="arrow">→</div>
+        <div class="box"><span>REST API<br><small>Go HTTP</small></span></div>
+        <div class="arrow">→</div>
+        <div class="box"><span>PostgreSQL<br><small>habits database</small></span></div>
+      </div>
+      <div class="content-grid">
+        <div class="card">
+          <h3>Frontend (expo)</h3>
+          <ul>
+            <li><strong>Ringscreen</strong> - Main circular habit view</li>
+            <li><strong>AddHabitScreen</strong> - Add new habits</li>
+            <li><strong>HistoryScreen</strong> - 4-week calendar</li>
+            <li><strong>sketch.js</strong> - Hand-drawn SVG components</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Backend (Go)</h3>
+          <ul>
+            <li><strong>main.go</strong> - HTTP handlers + OpenAPI</li>
+            <li><strong>db/client.go</strong> - PostgreSQL pool management</li>
+            <li>Auto-creates database on startup</li>
+            <li>Built-in Swagger docs</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: Backend API -->
+    <div class="slide">
+      <h2>Backend API Endpoints</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="method">GET</td>
+            <td class="path">/api/habits</td>
+            <td class="desc">List all habits with 7-day done/total counts and today_done flag</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td class="path">/api/habits</td>
+            <td class="desc">Create a new habit. Body: {"name": "Habit name"}</td>
+          </tr>
+          <tr>
+            <td class="method">POST</td>
+            <td class="path">/api/toggles</td>
+            <td class="desc">Toggle today's completion. Body: {"habit_id": 1, "completed": true}</td>
+          </tr>
+          <tr>
+            <td class="method">GET</td>
+            <td class="path">/api/history</td>
+            <td class="desc">Get 28-day completion log per habit</td>
+          </tr>
+          <tr>
+            <td class="method">GET</td>
+            <td class="path">/docs/openapi.json</td>
+            <td class="desc">OpenAPI 3.0 spec (JSON)</td>
+          </tr>
+        </tbody>
+      </table>
+      <br>
+      <div class="card">
+        <h3>Response Models</h3>
+        <div class="code-block">
+// GET /api/habits response
+[
+  {"id": 1, "name": "Meditation", "done": 3, "total": 7, "today_done": true},
+  {"id": 2, "name": "Exercise", "done": 5, "total": 7, "today_done": false}
+]
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: Database Schema -->
+    <div class="slide">
+      <h2>Database Schema</h2>
+      <div class="content-grid">
+        <div class="card full-card">
+          <h3>Tables</h3>
+          <div class="code-block">
+-- habits: Master list of tracked habits
+CREATE TABLE habits (
+    id   SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- logs: Daily completion records
+CREATE TABLE logs (
+    habit_id  INT REFERENCES habits(id) ON DELETE CASCADE,
+    date     DATE NOT NULL DEFAULT CURRENT_DATE,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (habit_id, date)
+);
+          </div>
+        </div>
+        <div class="card">
+          <h3>Default Seeds</h3>
+          <p>Meditation, Exercise, Reading</p>
+        </div>
+        <div class="card">
+          <h3>Auto-Provision</h3>
+          <p>Backend auto-creates "habits" database on startup if missing</p>
+          <p style="margin-top:10px;color:rgba(245,243,239,0.5);">Uses pgxpool for connection pooling</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: Frontend Screens -->
+    <div class="slide">
+      <h2>Frontend Screens</h2>
+      <div class="content-grid three">
+        <div class="card">
+          <h3>RingScreen</h3>
+          <p>Main daily view with:</p>
+          <ul>
+            <li>Circular arrangement (max 8)</li>
+            <li>Progress arc (dashed)</li>
+            <li>7-day sparklines per habit</li>
+            <li>Center counter</li>
+            <li>Tap to toggle</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>AddHabitScreen</h3>
+          <p>Add new habits:</p>
+          <ul>
+            <li>Mini ring preview</li>
+            <li>Text input</li>
+            <li>Starter habit pills</li>
+            <li>8-habit limit</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>HistoryScreen</h3>
+          <p>4-week calendar:</p>
+          <ul>
+            <li>Week-by-week grid</li>
+            <li>Navigation arrows</li>
+            <li>Checkmarks for done</li>
+            <li>Skipped/missed nodes</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 6: Design System -->
+    <div class="slide">
+      <h2>Design System</h2>
+      <div class="content-grid">
+        <div class="card">
+          <h3>Color Palette</h3>
+          <ul>
+            <li><span class="color-swatch" style="background:#1a1814"></span>INK (#1a1814)</li>
+            <li><span class="color-swatch" style="background:#f5f3ef"></span>PAPER (#f5f3ef)</li>
+            <li><span class="color-swatch" style="background:#3d8c7c"></span>ACCENT (#3d8c7c)</li>
+            <li><span class="color-swatch" style="background:rgba(26,24,20,0.45)"></span>MUTED</li>
+            <li><span class="color-swatch" style="background:rgba(26,24,20,0.18)"></span>FAINT</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Typography</h3>
+          <ul>
+            <li><strong>Headers:</strong> Caveat 700 Bold (handwritten)</li>
+            <li><strong>Body:</strong> Kalam 400 Regular</li>
+            <li><strong>UI Labels:</strong> JetBrains Mono 400</li>
+          </ul>
+          <p style="margin-top:10px;color:rgba(245,243,239,0.5);">Custom Google Fonts via @expo-google-fonts</p>
+        </div>
+        <div class="card">
+          <h3>SVG Components</h3>
+          <ul>
+            <li><strong>SketchCircle</strong> - Hand-drawn circles</li>
+            <li><strong>SketchHatch</strong> - Cross-hatch fill</li>
+            <li><strong>SketchCheck</strong> - Hand-drawn checkmark</li>
+          </ul>
+          <p style="margin-top:10px;color:rgba(245,243,239,0.5);">Uses seeded random for consistency</p>
+        </div>
+        <div class="card">
+          <h3>UI Elements</h3>
+          <ul>
+            <li>Pill buttons (bordered)</li>
+            <li>Underline inputs</li>
+            <li>Tap targets (30px)</li>
+            <li>Footer navigation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 7: Key Features -->
+    <div class="slide">
+      <h2>Key Features</h2>
+      <div class="content-grid">
+        <div class="card">
+          <h3>Optimistic Updates</h3>
+          <p>UI updates instantly on tap, then syncs with server in background. Reverts on network failure.</p>
+        </div>
+        <div class="card">
+          <h3>Procedural SVG</h3>
+          <p>All graphics drawn with code - no images. Seeded random ensures each run looks the same.</p>
+        </div>
+        <div class="card">
+          <h3>OpenAPI Docs</h3>
+          <p>Built-in Swagger UI at /docs/ with full OpenAPI 3.0 spec</p>
+        </div>
+        <div class="card">
+          <h3>Auto Database</h3>
+          <p>Backend auto-creates PostgreSQL database on first run - zero setup</p>
+        </div>
+        <div class="card">
+          <h3>Week Sparklines</h3>
+          <p>Each habit shows 7-day progress mini-chart (last week)</p>
+        </div>
+        <div class="card">
+          <h3>Progress Arc</h3>
+          <p>Circular arc around ring shows overall daily completion %</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 8: Configuration -->
+    <div class="slide">
+      <h2>Configuration</h2>
+      <div class="content-grid">
+        <div class="card">
+          <h3>Frontend (.env)</h3>
+          <div class="code-block">
+EXPO_PUBLIC_API_URL=http://192.168.1.9:8082
+          </div>
+          <p style="margin-top:10px;color:#7cb8a0;">Set to local IP for physical device</p>
+        </div>
+        <div class="card">
+          <h3>Backend (.env)</h3>
+          <div class="code-block">
+DATABASE_URL=postgresql://postgres:password@localhost:5432/habits
+PORT=8082
+          </div>
+        </div>
+        <div class="card">
+          <h3>Database</h3>
+          <p>PostgreSQL on localhost:5432</p>
+          <p style="margin-top:10px;color:rgba(245,243,239,0.5);">User: postgres, Password: password</p>
+        </div>
+        <div class="card">
+          <h3>Build & Run</h3>
+          <p><span class="tag secondary">Frontend</span> expo start</p>
+          <p><span class="tag secondary">Backend</span> go run main.go</p>
+          <p><span class="tag secondary">Port</span> :8082</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 9: File Summary -->
+    <div class="slide">
+      <h2>File Summary</h2>
+      <div class="content-grid">
+        <div class="card">
+          <h3>Backend (3 files)</h3>
+          <ul>
+            <li>main.go - 457 lines (handlers + OpenAPI)</li>
+            <li>db/client.go - 64 lines (pgx pool)</li>
+            <li>db/init.sql - 18 lines (schema)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Frontend (5 files)</h3>
+          <ul>
+            <li>App.js - 135 lines (state + routing)</li>
+            <li>src/RingScreen.js - 244 lines</li>
+            <li>src/AddHabitScreen.js - 261 lines</li>
+            <li>src/HistoryScreen.js - 263 lines</li>
+            <li>src/sketch.js - 83 lines</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Totals</h3>
+          <div class="stat">
+            <div class="stat-num">8</div>
+            <div class="stat-label">Source Files</div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Code Stats</h3>
+          <div class="stat">
+            <div class="stat-num">1,282</div>
+            <div class="stat-label">Total Lines</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 10: Tech Stack -->
+    <div class="slide">
+      <h2>Tech Stack Summary</h2>
+      <div class="content-grid three">
+        <div class="card">
+          <h3>Frontend</h3>
+          <span class="tag">React Native</span><span class="tag">Expo</span>
+          <ul style="margin-top:15px">
+            <li>react-native-svg (Graphics)</li>
+            <li>@expo-google-fonts (Caveat, Kalam, JetBrains Mono)</li>
+            <li>react-native-get-random-values</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Backend</h3>
+          <span class="tag">Go 1.26</span><span class="tag">pgx/v5</span>
+          <ul style="margin-top:15px">
+            <li>Standard lib HTTP</li>
+            <li>joho/godotenv</li>
+            <li>pgxpool connection pool</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Database</h3>
+          <span class="tag">PostgreSQL</span>
+          <ul style="margin-top:15px">
+            <li>Auto database creation</li>
+            <li>CASCADE deletes</li>
+            <li>UPSERT toggles</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button id="prev" onclick="changeSlide(-1)">← Previous</button>
+    <button id="next" onclick="changeSlide(1)">Next →</button>
+  </div>
+  <div class="slide-num"><span id="current">1</span> / <span id="total">10</span></div>
+
+  <script>
+    let current = 1;
+    const total = 10;
+    
+    function showSlide(n) {
+      document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.slide')[n-1].classList.add('active');
+      document.getElementById('current').textContent = n;
+      document.getElementById('prev').disabled = n === 1;
+      document.getElementById('next').disabled = n === total;
+    }
+    
+    function changeSlide(dir) {
+      current = Math.max(1, Math.min(total, current + dir));
+      showSlide(current);
+    }
+    
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === ' ') changeSlide(1);
+      if (e.key === 'ArrowLeft') changeSlide(-1);
+    });
+  </script>
+</body>
+</html>
