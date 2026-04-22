@@ -1,5 +1,7 @@
 node_modules/
+web-build/
 .expo/
 dist/
-web-build/
 .env
+.codex
+.claude

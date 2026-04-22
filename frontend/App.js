@@ -29,7 +29,7 @@ export default function App() {
       const data = await res.json();
       setHabits(data ?? []);
     } catch (e) {
-      console.error('Failed to fetch habits:', e);
+      console.error(`Failed to fetch habits from ${API_BASE}/api/habits:`, e);
     } finally {
       setLoading(false);
     }
