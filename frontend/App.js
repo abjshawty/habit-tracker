@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useFonts } from 'expo-font';
+import { Caveat_700Bold } from '@expo-google-fonts/caveat';
+import { Kalam_400Regular, Kalam_700Bold } from '@expo-google-fonts/kalam';
+import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
+
+import RingScreen from './src/RingScreen';
+import AddHabitScreen from './src/AddHabitScreen';
 
 // On a physical device, replace with your machine's local IP e.g. 'http://192.168.1.x:8080'
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
@@ -7,6 +14,14 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 export default function App() {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [screen, setScreen] = useState('today'); // 'today' | 'add'
+
+  const [fontsLoaded] = useFonts({
+    Caveat_700Bold,
+    Kalam_400Regular,
+    Kalam_700Bold,
+    JetBrainsMono_400Regular,
+  });
 
   const fetchHabits = async () => {
     try {
@@ -20,16 +35,40 @@ export default function App() {
     }
   };
 
-  const toggleHabit = async (id, currentCompleted) => {
+  const toggleHabit = async (id, currentlyDone) => {
+    // Optimistic update so the ring reacts instantly
+    setHabits(prev =>
+      prev.map(h => h.id === id ? { ...h, today_done: !currentlyDone } : h)
+    );
     try {
       await fetch(`${API_BASE}/api/toggles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ habit_id: id, completed: !currentCompleted }),
+        body: JSON.stringify({ habit_id: id, completed: !currentlyDone }),
       });
       fetchHabits();
     } catch (e) {
       console.error('Failed to toggle habit:', e);
+      // Revert on network failure
+      setHabits(prev =>
+        prev.map(h => h.id === id ? { ...h, today_done: currentlyDone } : h)
+      );
+    }
+  };
+
+  const addHabit = async (name) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/habits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        await fetchHabits();
+        setScreen('today');
+      }
+    } catch (e) {
+      console.error('Failed to add habit:', e);
     }
   };
 
@@ -37,46 +76,38 @@ export default function App() {
     fetchHabits();
   }, []);
 
-  if (loading) {
+  if (!fontsLoaded || loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#3d8c7c" />
       </View>
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Habit Tracker</Text>
-      <FlatList
-        data={habits}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => {
-          const todayDone = item.done > 0; // simplistic: treat done > 0 as toggled today
-          return (
-            <View style={styles.row}>
-              <View style={styles.info}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.progress}>{item.done}/{item.total} this week</Text>
-              </View>
-              <Button
-                title={todayDone ? 'Undo' : 'Done'}
-                onPress={() => toggleHabit(item.id, todayDone)}
-              />
-            </View>
-          );
-        }}
+  if (screen === 'add') {
+    return (
+      <AddHabitScreen
+        habits={habits}
+        onBack={() => setScreen('today')}
+        onAdd={addHabit}
       />
-    </View>
+    );
+  }
+
+  return (
+    <RingScreen
+      habits={habits}
+      onToggle={toggleHabit}
+      onAddPress={() => setScreen('add')}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 20, backgroundColor: '#fff' },
-  center:    { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title:     { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-  row:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderColor: '#eee' },
-  info:      { flex: 1 },
-  name:      { fontSize: 16, fontWeight: '600' },
-  progress:  { fontSize: 13, color: '#888', marginTop: 2 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f3ef',
+  },
 });

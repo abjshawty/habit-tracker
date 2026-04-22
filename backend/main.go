@@ -13,15 +13,20 @@ import (
 )
 
 type Habit struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Done  int    `json:"done"`
-	Total int    `json:"total"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Done      int    `json:"done"`
+	Total     int    `json:"total"`
+	TodayDone bool   `json:"today_done"`
 }
 
 type ToggleRequest struct {
 	HabitID   int  `json:"habit_id"`
 	Completed bool `json:"completed"`
+}
+
+type AddHabitRequest struct {
+	Name string `json:"name"`
 }
 
 func main() {
@@ -40,17 +45,28 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
-// GET /api/habits — returns all habits with done/total counts for today's week
+// /api/habits — GET: list habits with week counts; POST: create a new habit
 func habitsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		listHabits(w, r)
+	case http.MethodPost:
+		addHabit(w, r)
+	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+func listHabits(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Pool.Query(context.Background(), `
 		SELECT h.id, h.name,
 		       COUNT(*) FILTER (WHERE l.completed = TRUE)  AS done,
-		       COUNT(*)                                     AS total
+		       COUNT(*)                                     AS total,
+		       COALESCE(
+		         (SELECT completed FROM logs
+		          WHERE habit_id = h.id AND date = CURRENT_DATE LIMIT 1),
+		         FALSE
+		       ) AS today_done
 		FROM habits h
 		LEFT JOIN logs l ON l.habit_id = h.id
 		        AND l.date >= CURRENT_DATE - INTERVAL '6 days'
@@ -59,7 +75,7 @@ func habitsHandler(w http.ResponseWriter, r *http.Request) {
 	`)
 	if err != nil {
 		http.Error(w, "query error", http.StatusInternalServerError)
-		log.Println("habitsHandler query:", err)
+		log.Println("listHabits query:", err)
 		return
 	}
 	defer rows.Close()
@@ -67,7 +83,7 @@ func habitsHandler(w http.ResponseWriter, r *http.Request) {
 	var habits []Habit
 	for rows.Next() {
 		var h Habit
-		if err := rows.Scan(&h.ID, &h.Name, &h.Done, &h.Total); err != nil {
+		if err := rows.Scan(&h.ID, &h.Name, &h.Done, &h.Total, &h.TodayDone); err != nil {
 			http.Error(w, "scan error", http.StatusInternalServerError)
 			return
 		}
@@ -76,6 +92,28 @@ func habitsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(habits)
+}
+
+func addHabit(w http.ResponseWriter, r *http.Request) {
+	var req AddHabitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		http.Error(w, "bad request: name required", http.StatusBadRequest)
+		return
+	}
+
+	var id int
+	err := db.Pool.QueryRow(context.Background(),
+		"INSERT INTO habits (name) VALUES ($1) RETURNING id", req.Name,
+	).Scan(&id)
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		log.Println("addHabit:", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 
 // POST /api/toggles — upserts a log entry for today
