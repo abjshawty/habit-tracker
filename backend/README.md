@@ -63,6 +63,12 @@ Upserts a log entry for today. Sending `completed: false` undoes a toggle.
 
 **Response** — `204 No Content` on success.
 
+### `GET /swagger/`
+
+Serves Swagger UI for the backend API.
+
+The UI loads the local OpenAPI document from `GET /swagger/openapi.json`.
+
 ---
 
 ## Database Schema
@@ -131,4 +137,7 @@ curl -X POST http://localhost:8080/api/toggles \
 
 # Confirm the count updated
 curl http://localhost:8080/api/habits
+
+# Open Swagger UI
+# http://localhost:8080/swagger/
 ```

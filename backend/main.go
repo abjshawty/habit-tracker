@@ -36,6 +36,9 @@ func main() {
 
 	http.HandleFunc("/api/habits", habitsHandler)
 	http.HandleFunc("/api/toggles", togglesHandler)
+	http.HandleFunc("/docs", docsRedirectHandler)
+	http.HandleFunc("/docs/", docsUIHandler)
+	http.HandleFunc("/docs/openapi.json", openAPIHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -142,3 +145,216 @@ func togglesHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func docsRedirectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/docs" {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, "/docs/", http.StatusMovedPermanently)
+}
+
+func docsUIHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/docs/" {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(swaggerUIHTML))
+}
+
+func openAPIHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/docs/openapi.json" {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(openAPISpec))
+}
+
+const swaggerUIHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tracker API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: "/docs/openapi.json",
+      dom_id: "#swagger-ui"
+    });
+  </script>
+</body>
+</html>
+`
+
+const openAPISpec = `{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Habit Tracker API",
+    "version": "1.0.0",
+    "description": "API for listing habits, creating habits, and toggling today's completion."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8082"
+    }
+  ],
+  "tags": [
+    { "name": "Habits", "description": "Habit management endpoints" },
+    { "name": "Toggles", "description": "Habit completion tracking endpoints" }
+  ],
+  "paths": {
+    "/api/habits": {
+      "get": {
+        "tags": ["Habits"],
+        "summary": "List habits",
+        "description": "Returns all habits with 7-day completion counts and whether the habit is completed today.",
+        "responses": {
+          "200": {
+            "description": "A list of habits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Habit"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Habits"],
+        "summary": "Create a habit",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddHabitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Habit created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 4
+                    }
+                  },
+                  "required": ["id"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Database error"
+          }
+        }
+      }
+    },
+    "/api/toggles": {
+      "post": {
+        "tags": ["Toggles"],
+        "summary": "Toggle today's completion",
+        "description": "Upserts today's completion state for a habit.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Toggle saved"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Database error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Habit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Meditation"
+          },
+          "done": {
+            "type": "integer",
+            "example": 3
+          },
+          "total": {
+            "type": "integer",
+            "example": 7
+          },
+          "today_done": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": ["id", "name", "done", "total", "today_done"]
+      },
+      "AddHabitRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Read 20 minutes"
+          }
+        },
+        "required": ["name"]
+      },
+      "ToggleRequest": {
+        "type": "object",
+        "properties": {
+          "habit_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "completed": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": ["habit_id", "completed"]
+      }
+    }
+  }
+}
+`
