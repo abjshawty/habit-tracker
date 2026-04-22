@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     paddingHorizontal: 24,
-    paddingTop: 18,
+    paddingTop: 32,
     paddingBottom: 8,
   },
   backTag: {

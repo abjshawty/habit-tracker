@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 18,
+    paddingTop: 32,
     paddingBottom: 0,
   },
   dateTag: {
