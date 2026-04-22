@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"habit-tracker/db"
 
@@ -29,6 +30,12 @@ type AddHabitRequest struct {
 	Name string `json:"name"`
 }
 
+type HabitHistory struct {
+	ID   int             `json:"id"`
+	Name string          `json:"name"`
+	Log  map[string]bool `json:"log"` // "YYYY-MM-DD" → completed
+}
+
 func main() {
 	_ = godotenv.Load()
 	db.Init()
@@ -36,6 +43,7 @@ func main() {
 
 	http.HandleFunc("/api/habits", habitsHandler)
 	http.HandleFunc("/api/toggles", togglesHandler)
+	http.HandleFunc("/api/history", historyHandler)
 	http.HandleFunc("/docs", docsRedirectHandler)
 	http.HandleFunc("/docs/", docsUIHandler)
 	http.HandleFunc("/docs/openapi.json", openAPIHandler)
@@ -146,6 +154,58 @@ func togglesHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// GET /api/history — per-habit completion log for the last 28 days
+func historyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Pool.Query(context.Background(), `
+		SELECT h.id, h.name, l.date, l.completed
+		FROM habits h
+		LEFT JOIN logs l ON l.habit_id = h.id
+			AND l.date >= CURRENT_DATE - INTERVAL '27 days'
+			AND l.date <= CURRENT_DATE
+		ORDER BY h.id, l.date
+	`)
+	if err != nil {
+		http.Error(w, "query error", http.StatusInternalServerError)
+		log.Println("historyHandler:", err)
+		return
+	}
+	defer rows.Close()
+
+	habitMap := map[int]*HabitHistory{}
+	var habitOrder []int
+
+	for rows.Next() {
+		var habitID int
+		var name string
+		var date *time.Time
+		var completed *bool
+		if err := rows.Scan(&habitID, &name, &date, &completed); err != nil {
+			http.Error(w, "scan error", http.StatusInternalServerError)
+			return
+		}
+		if _, ok := habitMap[habitID]; !ok {
+			habitMap[habitID] = &HabitHistory{ID: habitID, Name: name, Log: map[string]bool{}}
+			habitOrder = append(habitOrder, habitID)
+		}
+		if date != nil {
+			habitMap[habitID].Log[date.Format("2006-01-02")] = completed != nil && *completed
+		}
+	}
+
+	result := make([]HabitHistory, 0, len(habitOrder))
+	for _, id := range habitOrder {
+		result = append(result, *habitMap[id])
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 func docsRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/docs" {
 		http.NotFound(w, r)
@@ -209,7 +269,8 @@ const openAPISpec = `{
   ],
   "tags": [
     { "name": "Habits", "description": "Habit management endpoints" },
-    { "name": "Toggles", "description": "Habit completion tracking endpoints" }
+    { "name": "Toggles", "description": "Habit completion tracking endpoints" },
+    { "name": "History", "description": "Historical completion data" }
   ],
   "paths": {
     "/api/habits": {
@@ -269,6 +330,28 @@ const openAPISpec = `{
           },
           "500": {
             "description": "Database error"
+          }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": ["History"],
+        "summary": "Get completion history",
+        "description": "Returns per-habit completion log for the last 28 days. Keys are ISO dates (YYYY-MM-DD); values are true (completed) or false (explicitly not completed). Dates with no log entry are omitted.",
+        "responses": {
+          "200": {
+            "description": "History per habit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HabitHistory"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -339,6 +422,20 @@ const openAPISpec = `{
           }
         },
         "required": ["name"]
+      },
+      "HabitHistory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string", "example": "Meditation" },
+          "log": {
+            "type": "object",
+            "description": "Map of ISO date to completion boolean",
+            "additionalProperties": { "type": "boolean" },
+            "example": { "2026-04-20": true, "2026-04-21": false }
+          }
+        },
+        "required": ["id", "name", "log"]
       },
       "ToggleRequest": {
         "type": "object",

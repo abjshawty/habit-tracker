@@ -7,6 +7,7 @@ import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
 
 import RingScreen from './src/RingScreen';
 import AddHabitScreen from './src/AddHabitScreen';
+import HistoryScreen from './src/HistoryScreen';
 
 // On a physical device, replace with your machine's local IP e.g. 'http://192.168.1.x:8080'
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
@@ -14,7 +15,8 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 export default function App() {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [screen, setScreen] = useState('today'); // 'today' | 'add'
+  const [screen, setScreen] = useState('today'); // 'today' | 'add' | 'history'
+  const [historyData, setHistoryData] = useState([]);
 
   const [fontsLoaded] = useFonts({
     Caveat_700Bold,
@@ -56,6 +58,16 @@ export default function App() {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/history`);
+      const data = await res.json();
+      setHistoryData(data ?? []);
+    } catch (e) {
+      console.error(`Failed to fetch history from ${API_BASE}/api/history:`, e);
+    }
+  };
+
   const addHabit = async (name) => {
     try {
       const res = await fetch(`${API_BASE}/api/habits`, {
@@ -94,11 +106,21 @@ export default function App() {
     );
   }
 
+  if (screen === 'history') {
+    return (
+      <HistoryScreen
+        habits={historyData}
+        onBack={() => setScreen('today')}
+      />
+    );
+  }
+
   return (
     <RingScreen
       habits={habits}
       onToggle={toggleHabit}
       onAddPress={() => setScreen('add')}
+      onHistoryPress={() => { setScreen('history'); fetchHistory(); }}
     />
   );
 }

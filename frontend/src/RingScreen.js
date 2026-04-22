@@ -25,7 +25,7 @@ function buildWeek(done, total) {
   return week;
 }
 
-export default function RingScreen({ habits, onToggle, onAddPress }) {
+export default function RingScreen({ habits, onToggle, onAddPress, onHistoryPress }) {
   const doneCount = habits.filter(h => h.today_done).length;
   const total = habits.length;
   const pct = total > 0 ? doneCount / total : 0;
@@ -66,6 +66,9 @@ export default function RingScreen({ habits, onToggle, onAddPress }) {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={styles.dateTag}>{dateLabel}</Text>
+          <TouchableOpacity onPress={onHistoryPress} activeOpacity={0.7}>
+            <Text style={styles.historyLink}>history →</Text>
+          </TouchableOpacity>
         </View>
 
         <Svg width={SCREEN_W} height={svgH} viewBox={`0 0 ${VB_W} ${VB_H}`}>
@@ -189,11 +192,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 18,
     paddingBottom: 0,
   },
   dateTag: {
+    fontFamily: 'JetBrainsMono_400Regular',
+    fontSize: 9,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: SK.MUTED,
+  },
+  historyLink: {
     fontFamily: 'JetBrainsMono_400Regular',
     fontSize: 9,
     letterSpacing: 1.5,
